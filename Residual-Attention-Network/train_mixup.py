@@ -114,61 +114,65 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=0.0001)
 is_train = True
 is_pretrain = False
-acc_best = 0
 total_epoch = 320
-if is_train is True:
-    if is_pretrain == True:
-        model.load_state_dict((torch.load(model_file)))
-    # Training
-    for epoch in range(total_epoch):
-        if epoch > 300:
-            is_mixup = False
-        else:
-            is_mixup = True
-        model.train()
-        tims = time.time()
-        for i, (images, labels) in enumerate(train_loader):
-            if is_mixup:
-                inputs, targets_a, targets_b, lam = mixup_data(images.cuda(), labels.cuda(), alpha=1.0)
-                inputs, targets_a, targets_b = map(Variable, (inputs,
-                                                              targets_a, targets_b))
-                outputs = model(inputs)
-                optimizer.zero_grad()
-                loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
-                loss.backward()
-                optimizer.step()
+
+def main():
+    acc_best = 0
+    if is_train is True:
+        if is_pretrain == True:
+            model.load_state_dict((torch.load(model_file)))
+        # Training
+        for epoch in range(total_epoch):
+            if epoch > 300:
+                is_mixup = False
             else:
-                images = Variable(images.cuda())
-                # print(images.data)
-                labels = Variable(labels.cuda())
-                # Forward + Backward + Optimize
-                optimizer.zero_grad()
-                outputs = model(images)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-            # print("hello")
-            if (i+1) % 100 == 0:
-                print("Epoch [%d/%d], Iter [%d/%d] Loss: %.4f" %(epoch+1, total_epoch, i+1, len(train_loader), loss.data[0]))
-        print('the epoch takes time:',time.time()-tims)
-        print('evaluate test set:')
-        acc = test(model, test_loader, btrain=True)
-        if acc > acc_best:
-            acc_best = acc
-            print('current best acc,', acc_best)
-            torch.save(model.state_dict(), model_file)
-        # Decaying Learning Rate
-        if (epoch+1) / float(total_epoch) == 0.3 or (epoch+1) / float(total_epoch) == 0.6 or (epoch+1) / float(total_epoch) == 0.9:
-            lr /= 10
-            print('reset learning rate to:', lr)
-            for param_group in optimizer.param_groups:
-                param_group['lr'] = lr
-                print(param_group['lr'])
-            # optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-            # optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=0.0001)
-    # Save the Model
-    torch.save(model.state_dict(), 'last_model_92_sgd_mixup300_normal20.pkl')
+                is_mixup = True
+            model.train()
+            tims = time.time()
+            for i, (images, labels) in enumerate(train_loader):
+                if is_mixup:
+                    inputs, targets_a, targets_b, lam = mixup_data(images.cuda(), labels.cuda(), alpha=1.0)
+                    inputs, targets_a, targets_b = map(Variable, (inputs,
+                                                                  targets_a, targets_b))
+                    outputs = model(inputs)
+                    optimizer.zero_grad()
+                    loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
+                    loss.backward()
+                    optimizer.step()
+                else:
+                    images = Variable(images.cuda())
+                    # print(images.data)
+                    labels = Variable(labels.cuda())
+                    # Forward + Backward + Optimize
+                    optimizer.zero_grad()
+                    outputs = model(images)
+                    loss = criterion(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
+                # print("hello")
+                if (i+1) % 100 == 0:
+                    print("Epoch [%d/%d], Iter [%d/%d] Loss: %.4f" %(epoch+1, total_epoch, i+1, len(train_loader), loss.item()))
+            print('the epoch takes time:',time.time()-tims)
+            print('evaluate test set:')
+            acc = test(model, test_loader, btrain=True)
+            if acc > acc_best:
+                acc_best = acc
+                print('current best acc,', acc_best)
+                torch.save(model.state_dict(), model_file)
+            # Decaying Learning Rate
+            if (epoch+1) / float(total_epoch) == 0.3 or (epoch+1) / float(total_epoch) == 0.6 or (epoch+1) / float(total_epoch) == 0.9:
+                lr /= 10
+                print('reset learning rate to:', lr)
+                for param_group in optimizer.param_groups:
+                    param_group['lr'] = lr
+                    print(param_group['lr'])
+                # optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                # optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=0.0001)
+        # Save the Model
+        torch.save(model.state_dict(), 'last_model_92_sgd_mixup300_normal20.pkl')
 
-else:
-    test(model, test_loader, btrain=False)
+    else:
+        test(model, test_loader, btrain=False)
 
+if __name__ == '__main__':
+    main()
